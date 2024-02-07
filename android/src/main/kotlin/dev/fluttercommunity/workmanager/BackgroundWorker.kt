@@ -67,7 +67,11 @@ class BackgroundWorker(
     override fun startWork(): ListenableFuture<Result> {
         startTime = System.currentTimeMillis()
 
-        engine = FlutterEngine(applicationContext)
+        // The engine will be destroyed when the task is finished. As a result, the onDetachedFromEngine hook of all attached
+        // plugins will be called. This can lead to unexpected behaviour in plugins that are not designed to be used in multiple
+        // Flutter engines. For this reason, automaticallyRegisterPlugins is disabled. The client of WorkmanagerPlugin is
+        // responsible for registering the plugins through setPluginRegistrantV2.
+        engine = FlutterEngine(applicationContext, arrayOf(), false)
 
         if (!flutterLoader.initialized()) {
             flutterLoader.startInitialization(applicationContext)
@@ -96,6 +100,8 @@ class BackgroundWorker(
 
             // Backwards compatibility with v1. We register all the user's plugins.
             WorkmanagerPlugin.pluginRegistryCallback?.registerWith(ShimPluginRegistry(engine!!))
+            // Register plugins for apps that use Android v2 embedding.
+            WorkmanagerPlugin.pluginRegistrantV2?.registerWith(engine!!)
 
             engine?.let { engine ->
                 backgroundChannel = MethodChannel(engine.dartExecutor, BACKGROUND_CHANNEL_NAME)
