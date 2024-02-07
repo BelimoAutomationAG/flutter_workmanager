@@ -1,6 +1,7 @@
 package dev.fluttercommunity.workmanager
 
 import android.content.Context
+import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
@@ -34,6 +35,19 @@ class WorkmanagerPlugin : FlutterPlugin {
     companion object {
         var pluginRegistryCallback: PluginRegistry.PluginRegistrantCallback? = null
 
+        /**
+         * The [FlutterEngine] of a background task is created without any plugins attached. In order to use plugins in a
+         * background task, a [PluginRegistrantV2] must be provided.
+         *
+         * [pluginRegistrantV2] will be called after the [FlutterEngine] of a background task has been created and is responsible
+         * for registering any needed plugins with the [FlutterEngine].
+         * [pluginRegistrantV2] must be set before scheduling a background job.
+         *
+         * In contrast to [pluginRegistryCallback], this is intended for use with the v2 Android embedding.
+         */
+        @JvmStatic
+        var pluginRegistrantV2: PluginRegistrantV2? = null
+
         @JvmStatic
         fun registerWith(registrar: PluginRegistry.Registrar) {
             val plugin = WorkmanagerPlugin()
@@ -50,4 +64,8 @@ class WorkmanagerPlugin : FlutterPlugin {
             Companion.pluginRegistryCallback = pluginRegistryCallback
         }
     }
+}
+
+interface PluginRegistrantV2 {
+    fun registerWith(engine: FlutterEngine)
 }
