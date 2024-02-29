@@ -11,11 +11,12 @@ import com.google.common.util.concurrent.ListenableFuture
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.embedding.engine.loader.FlutterLoader
-import io.flutter.embedding.engine.plugins.shim.ShimPluginRegistry
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.FlutterCallbackInformation
+import java.lang.reflect.Method
 import java.util.Random
+
 
 /***
  * A simple worker that will post your input back to your Flutter application.
@@ -39,6 +40,8 @@ class BackgroundWorker(
         const val BACKGROUND_CHANNEL_NAME =
             "be.tramckrijte.workmanager/background_channel_work_manager"
         const val BACKGROUND_CHANNEL_INITIALIZED = "backgroundChannelInitialized"
+
+        const val pluginRegistrantClassName = "ch.belimo.belas.WorkmanagerPluginRegistrant"
 
         private val flutterLoader = FlutterLoader()
     }
@@ -73,6 +76,9 @@ class BackgroundWorker(
         // responsible for registering the plugins through setPluginRegistrantV2.
         engine = FlutterEngine(applicationContext, arrayOf(), false)
 
+        // force unwrap or just optional
+        registerPlugins(engine!!)
+
         if (!flutterLoader.initialized()) {
             flutterLoader.startInitialization(applicationContext)
         }
@@ -99,9 +105,9 @@ class BackgroundWorker(
             }
 
             // Backwards compatibility with v1. We register all the user's plugins.
-            WorkmanagerPlugin.pluginRegistryCallback?.registerWith(ShimPluginRegistry(engine!!))
+            // WorkmanagerPlugin.pluginRegistryCallback?.registerWith(ShimPluginRegistry(engine!!))
             // Register plugins for apps that use Android v2 embedding.
-            WorkmanagerPlugin.pluginRegistrantV2?.registerWith(engine!!)
+            // WorkmanagerPlugin.pluginRegistrantV2?.registerWith(engine!!)
 
             engine?.let { engine ->
                 backgroundChannel = MethodChannel(engine.dartExecutor, BACKGROUND_CHANNEL_NAME)
@@ -118,6 +124,22 @@ class BackgroundWorker(
         }
 
         return resolvableFuture
+    }
+
+    private fun registerPlugins(engine: FlutterEngine) {
+        try {
+            Log.i(TAG, "Registering WorkmanagerPluginRegistrant...")
+            val registrantClass = Class.forName(pluginRegistrantClassName)
+            val registrantCompanionInstance = registrantClass.getDeclaredField("Companion").get(null)
+            val registrantCompanion = Class.forName("$pluginRegistrantClassName\$Companion")
+
+            val registerWith: Method = registrantCompanion.getDeclaredMethod("registerWith", FlutterEngine::class.java)
+            registerWith.invoke(registrantCompanionInstance, engine)
+            Log.i(TAG, "Registered WorkmanagerPluginRegistrant")
+        } catch (e: Exception) {
+            // Can’t find registrant. Shouldn’t happen, but not worth blowing up at runtime.
+            Log.e(TAG, "Failed to register WorkmanagerPluginRegistrant", e)
+        }
     }
 
     override fun onStopped() {
