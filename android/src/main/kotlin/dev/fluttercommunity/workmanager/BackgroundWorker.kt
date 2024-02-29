@@ -41,6 +41,7 @@ class BackgroundWorker(
             "be.tramckrijte.workmanager/background_channel_work_manager"
         const val BACKGROUND_CHANNEL_INITIALIZED = "backgroundChannelInitialized"
 
+        // This name references a class in the belimo_assistant repository
         const val pluginRegistrantClassName = "ch.belimo.belas.WorkmanagerPluginRegistrant"
 
         private val flutterLoader = FlutterLoader()
