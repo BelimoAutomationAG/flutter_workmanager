@@ -73,11 +73,12 @@ class BackgroundWorker(
         // The engine will be destroyed when the task is finished. As a result, the onDetachedFromEngine hook of all attached
         // plugins will be called. This can lead to unexpected behaviour in plugins that are not designed to be used in multiple
         // Flutter engines. For this reason, automaticallyRegisterPlugins is disabled. The client of WorkmanagerPlugin is
-        // responsible for registering the plugins through setPluginRegistrantV2.
+        // responsible for registering the plugins manually via the WorkmanagerPluginRegistrant.
         engine = FlutterEngine(applicationContext, arrayOf(), false)
 
-        // force unwrap or just optional
-        registerPlugins(engine!!)
+        engine?.let {
+            registerPlugins(it)
+        }
 
         if (!flutterLoader.initialized()) {
             flutterLoader.startInitialization(applicationContext)
@@ -104,11 +105,6 @@ class BackgroundWorker(
                 )
             }
 
-            // Backwards compatibility with v1. We register all the user's plugins.
-            // WorkmanagerPlugin.pluginRegistryCallback?.registerWith(ShimPluginRegistry(engine!!))
-            // Register plugins for apps that use Android v2 embedding.
-            // WorkmanagerPlugin.pluginRegistrantV2?.registerWith(engine!!)
-
             engine?.let { engine ->
                 backgroundChannel = MethodChannel(engine.dartExecutor, BACKGROUND_CHANNEL_NAME)
                 backgroundChannel.setMethodCallHandler(this@BackgroundWorker)
@@ -126,6 +122,15 @@ class BackgroundWorker(
         return resolvableFuture
     }
 
+
+    /**
+     *  Uses reflections to trigger the registration of the Workmanager plugins, which are defined
+     *  by the client in ch.belimo.belas.WorkmanagerPluginRegistrant.
+     *  This implementation is inspired by the automatic plugin registration from flutter
+     *  via GeneratedPluginRegistrant.
+     *
+     *  @see <a href="https://docs.google.com/document/d/1xNkBmcdVL1yEXqtZ65KzTwfr5UXDD05VVKYXIXGX7p8/edit#heading=h.pub7jnop54q0">Automatic plugin registration</a>
+     */
     private fun registerPlugins(engine: FlutterEngine) {
         try {
             Log.i(TAG, "Registering WorkmanagerPluginRegistrant...")
@@ -135,7 +140,7 @@ class BackgroundWorker(
 
             val registerWith: Method = registrantCompanion.getDeclaredMethod("registerWith", FlutterEngine::class.java)
             registerWith.invoke(registrantCompanionInstance, engine)
-            Log.i(TAG, "Registered WorkmanagerPluginRegistrant")
+            Log.i(TAG, "Successfully registered WorkmanagerPluginRegistrant")
         } catch (e: Exception) {
             // Can’t find registrant. Shouldn’t happen, but not worth blowing up at runtime.
             Log.e(TAG, "Failed to register WorkmanagerPluginRegistrant", e)
