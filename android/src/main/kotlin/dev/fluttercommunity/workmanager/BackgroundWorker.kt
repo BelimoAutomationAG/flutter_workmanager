@@ -76,10 +76,6 @@ class BackgroundWorker(
         // responsible for registering the plugins manually via the WorkmanagerPluginRegistrant.
         engine = FlutterEngine(applicationContext, arrayOf(), false)
 
-        engine?.let {
-            registerPlugins(it)
-        }
-
         if (!flutterLoader.initialized()) {
             flutterLoader.startInitialization(applicationContext)
         }
@@ -106,6 +102,7 @@ class BackgroundWorker(
             }
 
             engine?.let { engine ->
+                registerPlugins(engine)
                 backgroundChannel = MethodChannel(engine.dartExecutor, BACKGROUND_CHANNEL_NAME)
                 backgroundChannel.setMethodCallHandler(this@BackgroundWorker)
 
