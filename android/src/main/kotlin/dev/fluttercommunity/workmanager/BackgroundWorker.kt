@@ -11,11 +11,12 @@ import com.google.common.util.concurrent.ListenableFuture
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.embedding.engine.loader.FlutterLoader
-import io.flutter.embedding.engine.plugins.shim.ShimPluginRegistry
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.FlutterCallbackInformation
+import java.lang.reflect.Method
 import java.util.Random
+
 
 /***
  * A simple worker that will post your input back to your Flutter application.
@@ -39,6 +40,9 @@ class BackgroundWorker(
         const val BACKGROUND_CHANNEL_NAME =
             "be.tramckrijte.workmanager/background_channel_work_manager"
         const val BACKGROUND_CHANNEL_INITIALIZED = "backgroundChannelInitialized"
+
+        // This name references a class in the belimo_assistant repository
+        const val pluginRegistrantClassName = "ch.belimo.belas.WorkmanagerPluginRegistrant"
 
         private val flutterLoader = FlutterLoader()
     }
@@ -70,7 +74,7 @@ class BackgroundWorker(
         // The engine will be destroyed when the task is finished. As a result, the onDetachedFromEngine hook of all attached
         // plugins will be called. This can lead to unexpected behaviour in plugins that are not designed to be used in multiple
         // Flutter engines. For this reason, automaticallyRegisterPlugins is disabled. The client of WorkmanagerPlugin is
-        // responsible for registering the plugins through setPluginRegistrantV2.
+        // responsible for registering the plugins manually via the WorkmanagerPluginRegistrant.
         engine = FlutterEngine(applicationContext, arrayOf(), false)
 
         if (!flutterLoader.initialized()) {
@@ -98,12 +102,8 @@ class BackgroundWorker(
                 )
             }
 
-            // Backwards compatibility with v1. We register all the user's plugins.
-            WorkmanagerPlugin.pluginRegistryCallback?.registerWith(ShimPluginRegistry(engine!!))
-            // Register plugins for apps that use Android v2 embedding.
-            WorkmanagerPlugin.pluginRegistrantV2?.registerWith(engine!!)
-
             engine?.let { engine ->
+                registerPlugins(engine)
                 backgroundChannel = MethodChannel(engine.dartExecutor, BACKGROUND_CHANNEL_NAME)
                 backgroundChannel.setMethodCallHandler(this@BackgroundWorker)
 
@@ -118,6 +118,31 @@ class BackgroundWorker(
         }
 
         return resolvableFuture
+    }
+
+
+    /**
+     *  Uses reflections to trigger the registration of the Workmanager plugins, which are defined
+     *  by the client in ch.belimo.belas.WorkmanagerPluginRegistrant.
+     *  This implementation is inspired by the automatic plugin registration from flutter
+     *  via GeneratedPluginRegistrant.
+     *
+     *  @see <a href="https://docs.google.com/document/d/1xNkBmcdVL1yEXqtZ65KzTwfr5UXDD05VVKYXIXGX7p8/edit#heading=h.pub7jnop54q0">Automatic plugin registration</a>
+     */
+    private fun registerPlugins(engine: FlutterEngine) {
+        try {
+            Log.i(TAG, "Registering WorkmanagerPluginRegistrant...")
+            val registrantClass = Class.forName(pluginRegistrantClassName)
+            val registrantCompanionInstance = registrantClass.getDeclaredField("Companion").get(null)
+            val registrantCompanion = Class.forName("$pluginRegistrantClassName\$Companion")
+
+            val registerWith: Method = registrantCompanion.getDeclaredMethod("registerWith", FlutterEngine::class.java)
+            registerWith.invoke(registrantCompanionInstance, engine)
+            Log.i(TAG, "Successfully registered WorkmanagerPluginRegistrant")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register workmanager plugins via WorkmanagerPluginRegistrant", e)
+            throw e
+        }
     }
 
     override fun onStopped() {
