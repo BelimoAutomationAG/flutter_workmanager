@@ -140,8 +140,8 @@ class BackgroundWorker(
             registerWith.invoke(registrantCompanionInstance, engine)
             Log.i(TAG, "Successfully registered WorkmanagerPluginRegistrant")
         } catch (e: Exception) {
-            // Can’t find registrant. Shouldn’t happen, but not worth blowing up at runtime.
-            Log.e(TAG, "Failed to register WorkmanagerPluginRegistrant", e)
+            Log.e(TAG, "Failed to register workmanager plugins via WorkmanagerPluginRegistrant", e)
+            throw e
         }
     }
 
