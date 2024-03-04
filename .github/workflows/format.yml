@@ -2,18 +2,18 @@ name: format + publishable
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   format_dart:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.12.0 # Can be updated once https://github.com/subosito/flutter-action/issues/277 is resolved
         with:
-          channel: 'stable'
+          channel: "stable"
       - name: Format
         run: |
           flutter format --set-exit-if-changed .
@@ -39,9 +39,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.12.0 # Can be updated once https://github.com/subosito/flutter-action/issues/277 is resolved
         with:
-          channel: 'stable'
+          channel: "stable"
 
       - name: publish checks
         run: |
