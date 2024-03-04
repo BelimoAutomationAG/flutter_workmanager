@@ -2,9 +2,9 @@ name: examples
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   example_android:
@@ -14,7 +14,7 @@ jobs:
       - uses: actions/setup-java@v1
         with:
           java-version: 17
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.12.0 # Can be updated once https://github.com/subosito/flutter-action/issues/277 is resolved
         with:
           channel: "stable"
 
@@ -26,7 +26,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.12.0 # Can be updated once https://github.com/subosito/flutter-action/issues/277 is resolved
         with:
           channel: "stable"
 
